@@ -1,4 +1,6 @@
-# Uptime Monitor
+# SiteWatch: Uptime Monitor
+
+![Dashboard](docs/dashboard.png)
 
 A small site reliability tool that checks a list of websites on a schedule, stores every result in SQLite,
 alerts when a site goes **down** or **recovers**, and shows uptime and response times on a web dashboard.

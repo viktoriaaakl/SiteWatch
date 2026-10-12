@@ -2,29 +2,86 @@
 <html lang="en">
 <head>
   <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta http-equiv="refresh" content="30">
-  <title>Uptime Monitor</title>
+  <title>SiteWatch · Uptime Monitor</title>
   <style>
-    body { font-family: system-ui, sans-serif; max-width: 860px; margin: 40px auto; padding: 0 16px; color: #1d2430; }
-    table { width: 100%; border-collapse: collapse; }
-    th, td { text-align: left; padding: 10px; border-bottom: 1px solid #e3e7eb; }
-    .up { color: #1a7f37; font-weight: 600; } .down { color: #c62828; font-weight: 600; }
+    :root { --bg:#f6f8fa; --card:#fff; --ink:#1f2328; --muted:#656d76; --line:#d8dee4;
+            --up:#1a7f37; --up-bg:#dafbe1; --down:#cf222e; --down-bg:#ffebe9; --accent:#0969da; }
+    @media (prefers-color-scheme: dark) {
+      :root { --bg:#0d1117; --card:#161b22; --ink:#e6edf3; --muted:#8d96a0; --line:#30363d;
+              --up:#3fb950; --up-bg:#12261e; --down:#f85149; --down-bg:#2d1214; --accent:#4493f8; }
+    }
+    * { box-sizing: border-box; }
+    body { margin:0; background:var(--bg); color:var(--ink);
+           font: 15px/1.5 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+    main { max-width: 920px; margin: 0 auto; padding: 32px 16px; }
+    header { display:flex; align-items:baseline; justify-content:space-between; gap:12px; flex-wrap:wrap; }
+    h1 { margin:0; font-size:26px; }
+    .sub { color:var(--muted); margin:4px 0 24px; }
+    .cards { display:grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap:12px; margin-bottom:24px; }
+    .card { background:var(--card); border:1px solid var(--line); border-radius:10px; padding:16px; }
+    .card .label { color:var(--muted); font-size:13px; }
+    .card .value { font-size:26px; font-weight:600; margin-top:2px; }
+    table { width:100%; border-collapse:collapse; background:var(--card); border:1px solid var(--line);
+            border-radius:10px; overflow:hidden; }
+    th, td { text-align:left; padding:12px 16px; border-bottom:1px solid var(--line); }
+    th { color:var(--muted); font-weight:600; font-size:13px; text-transform:uppercase; letter-spacing:.04em; }
+    tr:last-child td { border-bottom:none; }
+    a { color:var(--accent); text-decoration:none; } a:hover { text-decoration:underline; }
+    .pill { display:inline-block; padding:2px 10px; border-radius:999px; font-weight:600; font-size:13px; }
+    .pill.up { color:var(--up); background:var(--up-bg); }
+    .pill.down { color:var(--down); background:var(--down-bg); }
+    .pill.unknown { color:var(--muted); background:var(--bg); }
+    .bar { height:6px; background:var(--line); border-radius:999px; overflow:hidden; margin-top:6px; width:120px; }
+    .bar span { display:block; height:100%; background:var(--up); }
+    .bar span.warn { background:var(--down); }
+    footer { color:var(--muted); font-size:13px; margin-top:16px; }
+    @media (max-width: 600px) { th:nth-child(5), td:nth-child(5) { display:none; } }
   </style>
 </head>
 <body>
-  <h1>Uptime Monitor</h1>
-  <p>Last 24 hours · refreshes every 30 seconds</p>
+<main>
+  {% set total = rows|length %}
+  {% set up_now = rows|selectattr('is_up')|list|length %}
+  {% set known = rows|selectattr('uptime_pct', 'ne', none)|list %}
+  <header>
+    <h1>SiteWatch</h1>
+    <span class="pill {{ 'up' if up_now == total else 'down' }}">
+      {{ 'All systems operational' if up_now == total else (total - up_now) ~ ' site(s) down' }}
+    </span>
+  </header>
+  <p class="sub">Uptime monitor · last 24 hours · refreshes every 30 seconds</p>
+
+  <section class="cards">
+    <div class="card"><div class="label">Sites monitored</div><div class="value">{{ total }}</div></div>
+    <div class="card"><div class="label">Up right now</div><div class="value">{{ up_now }} / {{ total }}</div></div>
+    <div class="card"><div class="label">Average uptime</div>
+      <div class="value">{% if known %}{{ '%.2f'|format(known|sum(attribute='uptime_pct') / known|length) }}%{% else %}—{% endif %}</div></div>
+  </section>
+
   <table>
-    <tr><th>Site</th><th>Status</th><th>Uptime</th><th>Avg response</th><th>Checks</th></tr>
+    <tr><th>Site</th><th>Status</th><th>Uptime (24h)</th><th>Avg response</th><th>Checks</th></tr>
     {% for r in rows %}
     <tr>
       <td><a href="{{ r.url }}">{{ r.site }}</a></td>
-      <td class="{{ 'up' if r.is_up else 'down' }}">{{ 'UP' if r.is_up else ('DOWN' if r.is_up is not none else '—') }}</td>
-      <td>{{ r.uptime_pct if r.uptime_pct is not none else '—' }}{{ '%' if r.uptime_pct is not none }}</td>
-      <td>{{ r.avg_response_ms if r.avg_response_ms is not none else '—' }}{{ ' ms' if r.avg_response_ms is not none }}</td>
+      <td>
+        {% if r.is_up is none %}<span class="pill unknown">No data</span>
+        {% elif r.is_up %}<span class="pill up">UP</span>
+        {% else %}<span class="pill down">DOWN</span>{% endif %}
+      </td>
+      <td>
+        {% if r.uptime_pct is not none %}
+          {{ r.uptime_pct }}%
+          <div class="bar"><span class="{{ 'warn' if r.uptime_pct < 99 }}" style="width: {{ r.uptime_pct }}%"></span></div>
+        {% else %}—{% endif %}
+      </td>
+      <td>{{ r.avg_response_ms ~ ' ms' if r.avg_response_ms is not none else '—' }}</td>
       <td>{{ r.checks }}</td>
     </tr>
     {% endfor %}
   </table>
+  <footer>JSON API: <a href="/api/status">/api/status</a> · Health check: <a href="/health">/health</a></footer>
+</main>
 </body>
 </html>
