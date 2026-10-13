@@ -9,6 +9,7 @@ alerts when a site goes **down** or **recovers**, and shows uptime and response 
 - HTTP health checks with timeouts and expected status codes
 - Results stored in SQLite (uptime %, average response time over 24 hours)
 - Alerts only on **state changes** (up → down, down → up), so a long outage doesn't flood you with messages
+- **SSL certificate expiry warnings** 14 days before a certificate runs out (checked once a day)
 - Telegram and/or email alerts, configured through environment variables
 - Flask dashboard (`/`) and JSON API (`/api/status`), plus a `/health` endpoint
 - Docker Compose setup, unit tests and GitHub Actions CI

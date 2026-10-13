@@ -5,7 +5,7 @@ import time
 
 import requests
 
-from . import alerts, storage
+from . import alerts, ssl_check, storage
 from .checker import check_site
 from .config import DB_PATH, INTERVAL_SECONDS, SITES_FILE, load_sites
 
@@ -35,7 +35,11 @@ def main() -> None:
     sites = load_sites(SITES_FILE)
     conn = storage.connect(DB_PATH)
     session = requests.Session()
+    last_ssl_check = 0.0
     while True:
+        if time.time() - last_ssl_check > 24 * 60 * 60:  # certificates once a day
+            ssl_check.check_certificates(sites, alerts.send_alert)
+            last_ssl_check = time.time()
         run_once(conn, sites, session)
         if args.once:
             break
